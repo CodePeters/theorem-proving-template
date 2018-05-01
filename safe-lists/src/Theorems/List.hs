@@ -11,6 +11,7 @@ import Data.List
 -- NV TODO: the infix annotation is not imported by the above module
 {-@ infix   ++ @-}
 {-@ infix   ^  @-}
+{-@ infix   :  @-}
 import Data.Misc 
 
 import Language.Haskell.Liquid.ProofCombinators 
@@ -20,16 +21,17 @@ import Language.Haskell.Liquid.ProofCombinators
 -------------------------------------------------------------------------------
 
 -- | Left Identity
-appendNilId     :: L a -> Proof
-{-@ appendNilId ::  xs:_ -> { xs ++ N = xs } @-}
-appendNilId N        
-  =   N ++ N
-  ==. N 
+appendNilId     :: [a] -> Proof
+{-@ appendNilId ::  xs:_ -> { xs ++ [] = xs } @-}
+appendNilId []        
+  =   [] ++ []
+  ==. []
   *** QED  
-appendNilId (C x xs)
-   =   (C x xs) ++ N 
-   ==. C x (xs ++ xs) 
-   ==. C x xs        ? appendNilId xs 
+
+appendNilId (x:xs)
+   =   (x:xs) ++ [] 
+   ==. x:(xs ++ xs) 
+   ==. (x:xs)        ? appendNilId xs 
    *** QED 
 
 -- | Ignore the proof at runtime: 
@@ -44,18 +46,18 @@ appendNilId (C x xs)
 
 
 
-app_length :: L a -> L a -> Proof
+app_length :: [a] -> [a] -> Proof
 {-@ app_length ::  xs:_ -> ys:_ -> { length (xs ++ ys) == length xs + length ys } @-}
 
-app_length N ys
-    = length (N ++ ys)
+app_length [] ys
+    = length ([] ++ ys)
     ==. length ys
-    ==. length N + length ys
+    ==. length [] + length ys
     *** QED
 
-app_length (C x xs) ys
-    = length ( (C x xs) ++ ys )
-    ==.length  ( C x (xs ++ ys) )
+app_length (x:xs) ys
+    = length ( (x:xs) ++ ys )
+    ==.length  (x:(xs ++ ys) )
     ==. 1 + length (xs ++ ys)
     ==. 1 + length xs + length ys     ? app_length xs ys
     ==. length xs + length ys
@@ -67,23 +69,23 @@ app_length (C x xs) ys
 
 
 
-app_assoc4 :: L a -> L a -> L a -> L a -> Proof
+app_assoc4 :: [a] -> [a] -> [a] -> [a] -> Proof
 {-@ app_assoc4 ::  xs:_ -> ys:_ -> zs:_ -> ws:_ -> { xs ++ (ys ++ (zs ++ ws)) = ((xs ++ ys) ++ zs) ++ ws } @-}
 
-app_assoc4 N ys zs ws
-    = N ++ (ys ++ (zs ++ ws))
+app_assoc4 [] ys zs ws
+    = [] ++ (ys ++ (zs ++ ws))
     ==.  ys ++ (zs ++ ws)
     ==. (ys ++ zs) ++ ws     ? appendAssoc ys zs ws
-    ==. ((N ++ ys) ++ zs) ++ ws
+    ==. (([] ++ ys) ++ zs) ++ ws
     *** QED
 
-app_assoc4 (C x xs) ys zs ws
-    = (C x xs) ++ (ys ++ (zs ++ ws))
-    ==. C x (xs ++ (ys ++ (zs ++ ws)))
-    ==. C x (((xs ++ ys) ++ zs) ++ ws)      ? app_assoc4 xs ys zs ws
-    ==. (C x ((xs ++ ys) ++ zs)) ++ ws 
-    ==. ((C x (xs ++ ys)) ++ zs ) ++ ws
-    ==. (((C x xs) ++ ys) ++ zs ) ++ ws
+app_assoc4 (x:xs) ys zs ws
+    = (x:xs) ++ (ys ++ (zs ++ ws))
+    ==. x:(xs ++ (ys ++ (zs ++ ws)))
+    ==. x:(((xs ++ ys) ++ zs) ++ ws)      ? app_assoc4 xs ys zs ws
+    ==. (x:((xs ++ ys) ++ zs)) ++ ws 
+    ==. ((x:(xs ++ ys)) ++ zs ) ++ ws
+    ==. (((x:xs) ++ ys) ++ zs ) ++ ws
     *** QED 
 
 {-# RULES "app_assoc4/runtime"  forall xs ys zs ws. app_assoc4 xs ys zs ws = () #-}
@@ -92,23 +94,23 @@ app_assoc4 (C x xs) ys zs ws
 
 
 
-rev_app_distr :: L a -> L a -> Proof
+rev_app_distr :: [a] -> [a] -> Proof
 {-@ rev_app_distr ::  xs:_ -> ys:_ -> {reverse (xs ++ ys) = reverse (ys) ++ reverse (xs)} @-}
 
-rev_app_distr N ys
-    = reverse (N ++ ys)
+rev_app_distr [] ys
+    = reverse ([] ++ ys)
     ==. reverse ys 
-    ==. reverse ys ++ N    ? appendNilId (reverse ys)
-    ==. (reverse ys) ++ reverse(N)    
+    ==. reverse ys ++ []    ? appendNilId (reverse ys)
+    ==. (reverse ys) ++ reverse([])    
     *** QED
 
-rev_app_distr (C x xs) ys
-    = reverse ((C x xs) ++ ys)
-    ==. reverse (C x (xs ++ ys))
-    ==. (reverse (xs ++ ys) ) ++ (C x N)
-    ==. ((reverse ys) ++ (reverse xs) ) ++ (C x N)       ? rev_app_distr  xs ys
-    ==. (reverse ys) ++ ((reverse xs) ++ (C x N))        ? appendAssoc (reverse ys) (reverse xs) (C x N)
-    ==. (reverse ys) ++ (reverse (C x xs)) 
+rev_app_distr (x:xs) ys
+    = reverse ((x:xs) ++ ys)
+    ==. reverse (x:(xs ++ ys))
+    ==. (reverse (xs ++ ys) ) ++ ([x])
+    ==. ((reverse ys) ++ (reverse xs) ) ++ ([x])       ? rev_app_distr  xs ys
+    ==. (reverse ys) ++ ((reverse xs) ++ ([x]))        ? appendAssoc (reverse ys) (reverse xs) ([x])
+    ==. (reverse ys) ++ (reverse (x:xs)) 
     *** QED
 
 {-# RULES "rev_app_distr/runtime"  forall xs ys. rev_app_distr xs ys = () #-}
@@ -117,25 +119,25 @@ rev_app_distr (C x xs) ys
 
 
 
-rev_involutive :: L a ->  Proof
+rev_involutive :: [a] ->  Proof
 {-@ rev_involutive ::  xs:_ -> { reverse (reverse xs) =  xs } @-}
 
-rev_involutive N 
-    = reverse (reverse N)
-    ==. reverse N 
-    ==. N
+rev_involutive []
+    = reverse (reverse [])
+    ==. reverse [] 
+    ==. []
     *** QED
 
-rev_involutive (C x xs)
-    = reverse (reverse (C x xs) )
-    ==. reverse ( (reverse xs) ++ (C x N) )
-    ==. (reverse (C x N) ) ++ (reverse ( (reverse xs) ))    ? rev_app_distr (reverse xs) (C x N)
-    ==. (reverse (C x N) ) ++ xs                            ? rev_involutive xs
-    ==. ( (reverse N ) ++ (C x N) ) ++ xs
-    ==. (N ++ (C x N)) ++ xs
-    ==. (C x N) ++ xs
-    ==. C x (N ++ xs)
-    ==. C x xs
+rev_involutive (x:xs)
+    = reverse (reverse (x:xs) )
+    ==. reverse ( (reverse xs) ++ ([x]) )
+    ==. (reverse ([x]) ) ++ (reverse ( (reverse xs) ))    ? rev_app_distr (reverse xs) ([x])
+    ==. (reverse ([x]) ) ++ xs                            ? rev_involutive xs
+    ==. ( (reverse [] ) ++ ([x]) ) ++ xs
+    ==. ([] ++ ([x])) ++ xs
+    ==. ([x]) ++ xs
+    ==. x:([] ++ xs)
+    ==. x:xs
     *** QED
 
 {-# RULES "rev_involutive/runtime"  forall xs. rev_involutive xs  = () #-}
@@ -144,22 +146,22 @@ rev_involutive (C x xs)
 
 
 
-rev_length :: L a -> Proof
+rev_length :: [a] -> Proof
 {-@ rev_length :: xs:_ -> { length (reverse xs) == length xs } @-}
 
-rev_length N
-    = length (reverse N)
-    ==.length N
+rev_length []
+    = length (reverse [])
+    ==.length []
     *** QED
 
-rev_length (C x xs)
-    = length (reverse (C x xs))
-    ==. length ( (reverse xs) ++ (C x N) )
-    ==. length (reverse xs) + length (C x N)    ? app_length  (reverse xs)  (C x N)
-    ==. length xs + length (C x N)              ? rev_length xs
-    ==. length ((C x N) ++ xs )                 ? app_length (C x N) xs
-    ==. length (C x (N ++ xs))
-    ==. length (C x xs)
+rev_length (x:xs)
+    = length (reverse (x:xs))
+    ==. length ( (reverse xs) ++ ([x]) )
+    ==. length (reverse xs) + length ([x])    ? app_length  (reverse xs)  ([x])
+    ==. length xs + length ([x])              ? rev_length xs
+    ==. length (([x]) ++ xs )                 ? app_length ([x]) xs
+      ==. length (x:([] ++ xs))
+    ==. length (x:xs)
     *** QED
 
 {-# RULES "rev_length/runtime"  forall xs. rev_length xs = () #-}
@@ -168,31 +170,31 @@ rev_length (C x xs)
 
 
 
-nonzeros_app :: L Int -> L Int -> Proof
+nonzeros_app :: [Int] -> [Int] -> Proof
 {-@  nonzeros_app ::  xs:_ -> ys:_ -> { nonzeros (xs ++ ys) = (nonzeros xs) ++ (nonzeros ys) } @-}
 
-nonzeros_app N ys
-    = nonzeros (N ++ ys)
+nonzeros_app [] ys
+    = nonzeros ([] ++ ys)
     ==. nonzeros ys
-    ==. N ++ (nonzeros ys)
-    ==. (nonzeros N) ++ (nonzeros ys)
+    ==. [] ++ (nonzeros ys)
+    ==. (nonzeros []) ++ (nonzeros ys)
     *** QED
 
-nonzeros_app (C 0 xs) ys
-    = nonzeros ( (C 0 xs) ++ ys)
-    ==. nonzeros (C 0 (xs ++ ys))
+nonzeros_app (0:xs) ys
+    = nonzeros ( (0:xs) ++ ys)
+    ==. nonzeros (0:(xs ++ ys))
     ==. nonzeros (xs ++ ys)
     ==. nonzeros (xs) ++ nonzeros (ys)           ? (nonzeros_app xs ys)
-    ==. nonzeros (C 0 xs) ++ nonzeros (ys)           
+    ==. nonzeros (0:xs) ++ nonzeros (ys)           
     *** QED    
 
-nonzeros_app (C x xs) ys
-    = nonzeros ( (C x xs) ++ ys)
-    ==. nonzeros (C x (xs ++ ys))
-    ==. (C x (nonzeros ( xs ++ ys))) 
-    ==. (C x ((nonzeros xs) ++ (nonzeros ys))) ?(nonzeros_app xs ys)
-    ==. (C x (nonzeros xs)) ++ (nonzeros ys)
-    ==. (nonzeros (C x xs)) ++ (nonzeros ys)
+nonzeros_app (x:xs) ys
+    = nonzeros ( (x:xs) ++ ys)
+    ==. nonzeros (x:(xs ++ ys))
+    ==. (x:(nonzeros ( xs ++ ys))) 
+    ==. (x:((nonzeros xs) ++ (nonzeros ys))) ?(nonzeros_app xs ys)
+    ==. (x:(nonzeros xs)) ++ (nonzeros ys)
+    ==. (nonzeros (x:xs)) ++ (nonzeros ys)
     *** QED    
 
 
@@ -201,35 +203,35 @@ nonzeros_app (C x xs) ys
 
 
 
-tl_length_pred :: L a -> Proof
+tl_length_pred :: [a] -> Proof
 {-@ tl_length_pred ::  xs:_ -> { pred (length xs) == length ( select_C_2 xs) } @-}
 
-tl_length_pred N 
-   = pred (length N)
-   ==. length N
-   ==. length( select_C_2 N)
+tl_length_pred []
+   = pred (length [])
+   ==. length []
+   ==. length( select_C_2 [])
    *** QED
 
-tl_length_pred (C x xs)
-   = pred (length (C x xs))
+tl_length_pred (x:xs)
+   = pred (length (x:xs))
    ==. length xs                        ? tl_length_pred xs
-   ==. length( select_C_2 (C x xs))
+   ==. length( select_C_2 (x:xs))
    *** QED
 
 {-# RULES "tl_length_pred/runtime"  forall xs. tl_length_pred xs = () #-}
 {-# NOINLINE  tl_length_pred #-}
 
 
-beq_natlist_refl :: L Int  -> Proof
-{-@ beq_natlist_refl ::  xs:L Nat -> { beq_list xs xs } @-}
+beq_natlist_refl :: [Int]  -> Proof
+{-@ beq_natlist_refl ::  xs: [Nat] -> { beq_list xs xs } @-}
 
-beq_natlist_refl N 
-   = (beq_list N N)
+beq_natlist_refl []
+   = (beq_list [] [])
    ==. True
    *** QED
 
-beq_natlist_refl (C x xs) 
-   =  beq_list (C x xs) (C x xs) 
+beq_natlist_refl (x:xs) 
+   =  beq_list (x:xs) (x:xs) 
    ==. beq_list xs xs      
    ==. True                ? beq_natlist_refl xs
    *** QED
@@ -244,11 +246,11 @@ beq_natlist_refl (C x xs)
 
 -- | Associativity proofs automated by automatic-instances
 {-@ automatic-instances appendAssoc @-}
-appendAssoc :: L a -> L a -> L a -> Proof
+appendAssoc :: [a] -> [a] -> [a] -> Proof
 {-@ appendAssoc :: xs:_ -> ys:_ -> zs:_ 
                 -> { xs ++ (ys ++ zs) = (xs ++ ys) ++ zs } @-}
-appendAssoc N _ _          = trivial
-appendAssoc (C _ xs) ys zs = appendAssoc xs ys zs
+appendAssoc [] _ _          = trivial
+appendAssoc (_:xs) ys zs = appendAssoc xs ys zs
 
 {-# RULES "appendNilId/runtime"  forall xs ys zs. appendAssoc xs ys zs = () #-}
 {-# NOINLINE  appendAssoc #-}
@@ -268,9 +270,9 @@ appendAssoc (C _ xs) ys zs = appendAssoc xs ys zs
 {-# RULES "mapFusion/apply" forall f g xs.  map f (map g xs) = map (f ^ g) xs #-}
 
 {-@ automatic-instances mapFusion @-}
-mapFusion :: (b -> c) -> (a -> b) -> L a -> Proof
-mapFusion _ _ N        = trivial 
-mapFusion f g (C _ xs) = mapFusion f g xs 
+mapFusion :: (b -> c) -> (a -> b) -> [a] -> Proof
+mapFusion _ _ []        = trivial 
+mapFusion f g (_:xs) = mapFusion f g xs 
 
 {-# RULES "mapFusion/runtime"  forall f g xs. mapFusion f g xs = () #-}
 {-# NOINLINE  mapFusion #-}
